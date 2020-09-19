@@ -5,3 +5,4 @@ venv/
 .terraform.tfstate.lock.info
 *.tfstate*
 graph.svg
+ansible/hosts

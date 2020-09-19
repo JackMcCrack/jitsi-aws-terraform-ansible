@@ -1,0 +1,75 @@
+---
+# This playbook contains common plays that will be run on all nodes.
+
+- name: fetching developer pubkey for jitsi packages
+  get_url:
+    url: https://download.jitsi.org/jitsi-key.gpg.key
+    dest: /root/jitsi-key.gpg.key
+
+- name: converting to binary
+  command: gpg -o /usr/share/keyrings/jitsi-keyring.gpg --dearmor /root/jitsi-key.gpg.key
+- name: adding jitsi packages source
+  template:
+    src: templates/jitsi-stable_list.j2
+    dest: /etc/apt/sources.list.d/jitsi-stable.list
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install jitsi packages 
+  apt: 
+    state: present
+    pkg:
+      - apt-transport-https
+      - nginx
+      - dehydrated
+  register: services
+
+- name: adding dehytrated domains.txt 
+  template:
+    src: templates/domains_txt.j2
+    dest: /etc/dehydrated/domains.txt
+    owner: root
+    group: root
+    mode: '0644i'
+  register: letsencryptdomain
+  when: services.changed
+
+- name: check for let's encryptcertificate updates
+  command: dehydrated --accept-terms -c
+    when letsencryptdomain.changed and services.changed
+
+
+- name: adding nginx config 
+  template:
+    src: templates/nginx-site.j2
+    dest: /etc/nginx/sites-available/{{ server.name }}.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: services.changed
+  register: nginxsite
+
+- name: enable nginx config via symlink
+  file:
+    src: /etc/nginx/sites-available/{{ server.name }}.conf
+    dest: /etc/nginx/sites-enabled/{{ server.name }}.conf
+    state: link
+  register: nginxsitesymlink
+  when: nginxsite.changed
+
+- name: Reload nginx
+  systemd:
+    name: nginx
+    state: reload
+  when: nginxsitesymlink.changed
+
+- name: Install jitsi packages 
+  apt: 
+    state: present
+    pkg:
+      - jitsi-meet 
