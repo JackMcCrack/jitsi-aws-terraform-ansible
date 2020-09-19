@@ -1,0 +1,7 @@
+.*.swp
+.idea/
+.terraform/
+venv/
+.terraform.tfstate.lock.info
+*.tfstate*
+graph.svg
