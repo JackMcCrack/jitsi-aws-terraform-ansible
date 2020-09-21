@@ -1,0 +1,12 @@
+jitsi-meet-web-config	jitsi-meet/cert-path-crt	string	/var/lib/dehydrated/certs/{{ server.name }}/fullchain.pem
+jitsi-meet-prosody	jitsi-meet-prosody/jvb-hostname	string	{{ server.name }}
+jicofo	jitsi-videobridge/jvb-hostname	string	{{ server.name }}
+jitsi-meet-prosody	jitsi-videobridge/jvb-hostname	string	{{ server.name }}
+jitsi-meet-turnserver	jitsi-videobridge/jvb-hostname	string	{{ server.name }}
+jitsi-meet-web-config	jitsi-videobridge/jvb-hostname	string	{{ server.name }}
+jitsi-videobridge2	jitsi-videobridge/jvb-hostname	string	{{ server.name }}
+jitsi-meet-web-config	jitsi-meet/cert-path-key	string	/var/lib/dehydrated/certs/{{ server.name }}/privkey.pem
+jitsi-meet-web-config	jitsi-meet/cert-choice	select	I want to use my own certificate
+jitsi-meet-web-config	jitsi-meet/jvb-hostname	string	{{ server.name }}
+jitsi-meet-turnserver	jitsi-meet-turnserver/jvb-hostname	string	{{ server.name }}
+

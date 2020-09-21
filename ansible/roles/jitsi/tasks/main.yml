@@ -7,7 +7,8 @@
     dest: /root/jitsi-key.gpg.key
 
 - name: converting to binary
-  command: gpg -o /usr/share/keyrings/jitsi-keyring.gpg --dearmor /root/jitsi-key.gpg.key
+  command: gpg --batch --yes -o /usr/share/keyrings/jitsi-keyring.gpg --dearmor /root/jitsi-key.gpg.key
+
 - name: adding jitsi packages source
   template:
     src: templates/jitsi-stable_list.j2
@@ -27,7 +28,29 @@
       - apt-transport-https
       - nginx
       - dehydrated
+      - debconf-utils
   register: services
+
+
+
+- name: adding ACME challenge location to nginx default config
+  template:
+    src: templates/nginx-default.j2
+    dest: /etc/nginx/sites-available/default
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: enable nginx default config via symlink
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+
+- name: Reload nginx
+  systemd:
+    name: nginx
+    state: reloaded
 
 - name: adding dehytrated domains.txt 
   template:
@@ -35,38 +58,43 @@
     dest: /etc/dehydrated/domains.txt
     owner: root
     group: root
-    mode: '0644i'
-  register: letsencryptdomain
-  when: services.changed
+    mode: '0644'
 
 - name: check for let's encryptcertificate updates
-  command: dehydrated --accept-terms -c
-    when letsencryptdomain.changed and services.changed
+  command: /bin/bash -c 'dehydrated --accept-terms -c'
+  register: letsencryptdomain
 
-
-- name: adding nginx config 
+- name: adding nginx {{ server.name }} config 
   template:
     src: templates/nginx-site.j2
     dest: /etc/nginx/sites-available/{{ server.name }}.conf
     owner: root
     group: root
     mode: '0644'
-  when: services.changed
-  register: nginxsite
+  when: letsencryptdomain.changed
 
 - name: enable nginx config via symlink
   file:
     src: /etc/nginx/sites-available/{{ server.name }}.conf
     dest: /etc/nginx/sites-enabled/{{ server.name }}.conf
     state: link
-  register: nginxsitesymlink
-  when: nginxsite.changed
+  when: letsencryptdomain.changed
 
 - name: Reload nginx
   systemd:
     name: nginx
-    state: reload
-  when: nginxsitesymlink.changed
+    state: reloaded
+  when: letsencryptdomain.changed
+
+- name: creating jitsi package default settings file
+  template:
+    src: templates/jitsi-debconf.j2
+    dest: /root/jitsi-debconf
+  register: jitsidebconf
+
+- name: apply jitsi package default settings
+  command: debconf-set-selections /root/jitsi-debconf
+  when: jitsidebconf.changed
 
 - name: Install jitsi packages 
   apt: 
