@@ -101,3 +101,6 @@
     state: present
     pkg:
       - jitsi-meet 
+
+- name: remove Firefox from the supported browser list 
+  command: sed -i -e "s/'firefox', //" -e "s/UNSUPPORTED_BROWSERS: \[\],/UNSUPPORTED_BROWSERS: \[ 'firefox' \],/" /usr/share/jitsi-meet/interface_config.js
