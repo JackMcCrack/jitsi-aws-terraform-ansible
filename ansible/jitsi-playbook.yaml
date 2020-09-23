@@ -1,11 +1,8 @@
 --- 
 
-- hosts: jitsi
+- hosts: all
   become: true
   remote_user: ubuntu
   roles:
     - common
     - jitsi
-  vars:
-    server:
-      name: meet.example.com

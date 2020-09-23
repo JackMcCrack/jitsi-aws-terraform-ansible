@@ -14,5 +14,7 @@ fi
 # Read secrets from pass (password manager) and set them as environment variables
 export TF_VAR_aws_akey=$(pass aws/tf-accesskey)
 export TF_VAR_aws_skey=$(pass aws/tf-secretkey)
+export TF_VAR_dns_username=$(pass aws/dns_username)
+export TF_VAR_dns_password=$(pass aws/dns_password)
 
-${TF} $*
+${TF} $* 

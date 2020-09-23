@@ -64,10 +64,10 @@
   command: /bin/bash -c 'dehydrated --accept-terms -c'
   register: letsencryptdomain
 
-- name: adding nginx {{ server.name }} config 
+- name: adding nginx {{ servername }} config 
   template:
     src: templates/nginx-site.j2
-    dest: /etc/nginx/sites-available/{{ server.name }}.conf
+    dest: /etc/nginx/sites-available/{{ servername }}.conf
     owner: root
     group: root
     mode: '0644'
@@ -75,8 +75,8 @@
 
 - name: enable nginx config via symlink
   file:
-    src: /etc/nginx/sites-available/{{ server.name }}.conf
-    dest: /etc/nginx/sites-enabled/{{ server.name }}.conf
+    src: /etc/nginx/sites-available/{{ servername }}.conf
+    dest: /etc/nginx/sites-enabled/{{ servername }}.conf
     state: link
   when: letsencryptdomain.changed
 

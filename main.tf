@@ -2,85 +2,11 @@
 #	Setup a AWS EC2 Instance via Terraform and install Jitis-Meet via Ansible
 ####
 
-# version 20200919-2
-
-variable "aws_key_name" {
-  type = string
-  default = "test-deleteme" # Name of your SSH Key pair
-}
-variable "aws_key_file" {
-  type = string
-  default = "~/.ssh/id_rsa.aws" # Name of your SSH Key pair
-}
-variable "aws_region" {
-  type = string
-  default = "ap-northeast-1" # Tokyo
-}
-variable "aws_availability_zone" {
-  type = string
-  default = "a" # in Tokyo currently available: a, c, d
-}
-
-
-
-#fetch aws credentials from enviroment variables (see run.sh)
-variable "aws_akey" {
-  type = string
-  validation {
-    condition     = length(var.aws_akey) > 0
-    error_message = "Accesskey seems invalid!"
-  }
-}
-variable "aws_skey" {
-  type = string
-  validation {
-    condition     = length(var.aws_skey) > 0
-    error_message = "Secretkey seems invalid!"
-  }
-}
-
-
-
-# AWS Provider
-provider "aws" {
-  region     = var.aws_region
-  access_key = var.aws_akey
-  secret_key = var.aws_skey
-}
-
-# IP ranges 
-resource "aws_vpc" "ip_range" {
-  cidr_block = "10.171.234.0/24"		#random ipv4 local net
-  assign_generated_ipv6_cidr_block = true
-}
-
-# Gateway
-resource "aws_internet_gateway" "default_gw" {
-  vpc_id = aws_vpc.ip_range.id
-  tags = {
-    Name = "default-gw"
-  }
-}
-
-# Routes
-resource "aws_route_table" "route" {
-  vpc_id = aws_vpc.ip_range.id
-  
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.default_gw.id
-  }
-  route {
-    ipv6_cidr_block = "::/0"
-    gateway_id      = aws_internet_gateway.default_gw.id
-  }
-}
-
 # Subnet for Jits instance(s)
 resource "aws_subnet" "jitsi-meet-net" {
   vpc_id = aws_vpc.ip_range.id
   availability_zone = "${var.aws_region}${var.aws_availability_zone}"
-  cidr_block = "10.171.234.16/28"
+  cidr_block = var.aws_subnet_cidr_block
   assign_ipv6_address_on_creation = true
   ipv6_cidr_block = cidrsubnet(aws_vpc.ip_range.ipv6_cidr_block, 8, 1)
   tags = {
@@ -200,8 +126,6 @@ resource "aws_security_group" "output" {
   }
 }
 
-
-
 resource "aws_network_interface" "jitsi-nic" {
   subnet_id = aws_subnet.jitsi-meet-net.id
   security_groups = [ 
@@ -234,20 +158,15 @@ resource "aws_instance" "jitsi-instance" {
     aws_internet_gateway.default_gw
   ]
   key_name          = var.aws_key_name
+  provisioner "local-exec" {
+    command = "curl -s 'https://${var.dns_username}:${var.dns_password}@domains.google.com/nic/update?hostname=${var.jitsi_vhost}&myip=${aws_instance.jitsi-instance.public_ip}'"
+  }
+  provisioner "local-exec" {
+    command = "sleep 120; ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu -i '${aws_instance.jitsi-instance.public_ip},' -e 'servername=${var.jitsi_vhost}' ansible/jitsi-playbook.yaml"
+  }
   tags = {
     name = "jitsi-meet"
   }
 }
 
 
-
-output "server_public_ip4" {
-  value = aws_instance.jitsi-instance.public_ip
-}
-output "server_public_ip6" {
-  value = aws_instance.jitsi-instance.ipv6_addresses
-}
-
-output "run_ansible" {
-  value = "echo -e '[jitsi]\n${aws_instance.jitsi-instance.public_ip}\n\n[jitsi:vars]\nansible_ssh_private_key_file=${var.aws_key_file}' >ansible/hosts;  sleep 120; ansible-playbook -i ansible/hosts ansible/jitsi-playbook.yml"
-}
